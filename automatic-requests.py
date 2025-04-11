@@ -1,87 +1,70 @@
-# import requests
-
-# url = "https://hackathon-api.mlo.sehlat.io/game/start"
-# headers = {
-#     "accept": "application/json",
-#     "Content-Type": "application/json",
-#     "X-API-Key": "BAh5a5BH_zic0UbuFm8pqlHRcc_ctl1DuYmcDl8-yok"  # Reemplaza con tu API key real
-# }
-# data = {
-#     "player_name": "QuackCoders"
-# }
-
-# response = requests.post(url, headers=headers, json=data)
-
-# # Mostrar la respuesta
-# print("Status Code:", response.status_code)
-# print("Response JSON:", response.json())
-
-
-
 import requests
 import time
 
-API_KEY = "BAh5a5BH_zic0UbuFm8pqlHRcc_ctl1DuYmcDl8-yok"  # Reemplaza con tu API key real
-BASE_URL = "https://hackathon-api.mlo.sehlat.io"
+class GameSession:
+    def __init__(self, api_key, base_url="https://hackathon-api.mlo.sehlat.io", player_name="QuackCoders"):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.player_name = player_name
+        self.headers = {
+            "accept": "application/json",
+            "Content-Type": "application/json",
+            "X-API-Key": self.api_key
+        }
+        self.session_id = None
+        self.client_id = None
 
-HEADERS = {
-    "accept": "application/json",
-    "Content-Type": "application/json",
-    "X-API-Key": API_KEY
-}
+    def start_game(self):
+        url = f"{self.base_url}/game/start"
+        payload = {"player_name": self.player_name}
+        
+        response = requests.post(url, headers=self.headers, json=payload)
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        print("🎮 Juego iniciado:")
+        print(f"  📩 message: {data['message']}")
+        print(f"  🆔 session_id: {data['session_id']}")
+        print(f"  👤 player_id: {data['player_id']}")
+        print(f"  💻 client_id: {data['client_id']}")
+        print(f"  🏁 score: {data['score']}")
+        
+        self.session_id = data["session_id"]
+        self.client_id = data["client_id"]
 
-def start_game(player_name="QuackCoders"):
-    url = f"{BASE_URL}/game/start"
-    payload = {"player_name": player_name}
-    
-    response = requests.post(url, headers=HEADERS, json=payload)
-    response.raise_for_status()
-    
-    data = response.json()
+    def make_decision(self, decision="Accept"):
 
-    print("🎮 Juego iniciado:")
-    print(f"  📩 message: {data['message']}")
-    print(f"  🆔 session_id: {data['session_id']}")
-    print(f"  👤 player_id: {data['player_id']}")
-    print(f"  💻 client_id: {data['client_id']}")
-    print(f"  🏁 score: {data['score']}")
-
-    return data["session_id"], data["client_id"]
-
-def make_decision(session_id, client_id, decision="Accept"):
-    start_time = time.time()
-
-    url = f"{BASE_URL}/game/decision"
-    payload = {
-        "decision": decision,
-        "session_id": session_id,
-        "client_id": client_id
-    }
-    
-    response = requests.post(url, headers=HEADERS, json=payload)
-    # response.raise_for_status()
-    
-    elapsed = time.time() - start_time
-    if elapsed < 1.0:
-        time.sleep(1.0 - elapsed)
-
-    return response.json()
+        start_time = time.time()
+        
+        url = f"{self.base_url}/game/decision"
+        payload = {
+            "decision": decision,
+            "session_id": self.session_id,
+            "client_id": self.client_id
+        }
+        
+        response = requests.post(url, headers=self.headers, json=payload)
+        
+        elapsed = time.time() - start_time
+        if elapsed < 1.0:
+            time.sleep(1.0 - elapsed)
+        
+        data = response.json()
+        self.client_id = data.get("client_id", self.client_id)
+        return data
 
 def main():
-    session_id, client_id = start_game()
-    
+    API_KEY = "BAh5a5BH_zic0UbuFm8pqlHRcc_ctl1DuYmcDl8-yok" 
+    game = GameSession(api_key=API_KEY, player_name="QuackCoders")
+
+    game.start_game()
+
     while True:
-        result = make_decision(session_id, client_id)
-        client_id = result['client_id']
-        # Filtramos client_data si existe
+        result = game.make_decision(decision="Accept")
         filtered_result = {k: v for k, v in result.items() if k != "client_data"}
-        
-        print("📦 Resultado de decisión:")
-        for key, value in filtered_result.items():
-            print(f"  {key}: {value}")
-        
-        if result["status"] == "gameover":
-            print("💀 El juego ha terminado.")
+        print(filtered_result)
+        if result.get("status") == "gameover":
             break
 
 if __name__ == "__main__":
