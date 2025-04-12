@@ -1,0 +1,4 @@
+.venv/*
+client_*
+__pycache__*
+output.*

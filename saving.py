@@ -12,6 +12,7 @@ import json
 from flask import Flask, request
 import time
 import google.generativeai as genai
+import subprocess
 
 # Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
 
@@ -19,6 +20,8 @@ global r
 # r = redis.Redis(host='localhost', port=6379, db=0)
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
+model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
 def post_request():
     """
@@ -111,88 +114,7 @@ def _data_extract_txt(data):
         result[current_key] = '\n'.join(current_value).strip()
     return result
 
-
-def _preprocess_image(image):
-    """
-    Preprocess the image to improve OCR accuracy.
-    
-    Args:
-        image: PIL Image object
-    Returns:
-        Processed PIL Image object
-    """
-    image = image.convert('L')
-    image = image.resize((image.width * 2, image.height * 2), Image.Resampling.LANCZOS)
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(2.0)
-    enhancer = ImageEnhance.Sharpness(image)
-    image = enhancer.enhance(2.0)
-    image = image.filter(ImageFilter.MedianFilter(size=3))
-    image = image.point(lambda x: 0 if x < 128 else 255, '1')
-    
-    return image
-
 def _data_extract_png(data):
-    # """
-    # Cast PNG data to JSON using OCR to extract text from the picture
-
-    # Args:
-    #     data -> base 64 encoded string with PNG file contents
-    # Returns:
-    #     structured extracted data -> JSON
-    # """
-
-    # image = _preprocess_image(Image.open(BytesIO(base64.b64decode(data))))
-    
-    # text = pytesseract.image_to_string(image)
-    # text = re.sub(r'\n+', '\n', text).strip()
-    # print(text)
-    # lines = text.split('\n')
-
-    # passport_data = {}
-    
-    # field_patterns = pattern_defines.PNG_PATTERN
-    
-    # current_field = None
-    # for line in lines:
-    #     line = line.strip()
-    #     if not line:
-    #         continue
-            
-    #     for field, pattern in field_patterns.items():
-    #         match = re.search(pattern, line)
-    #         if match:
-    #             if field == "country":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "country_code":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "passport_num":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "name":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "issue Date":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "sex":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "issue_date":
-    #                 passport_data[field] = match.group(1)
-    #             elif field == "expiry_date":
-    #                 passport_data[field] = match.group(1)
-    #             else:
-    #                 passport_data[field] = match.group(1)
-    #             current_field = field
-    #             break
-    #     else:
-    #         if current_field and current_field not in passport_data:
-    #             passport_data[current_field] = line
-
-    # passport_data["extra_data"] = " ".join(lines[-3:]).strip().replace(" ", "")
-
-
-
-    genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
-
-    model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
     image = Image.open(BytesIO(base64.b64decode(data))) 
 
@@ -212,93 +134,131 @@ def _data_extract_png(data):
 def _data_extract_docx(data):
     with open(f'tmp_f.docx', 'wb') as f:
         f.write(base64.b64decode(data))
-    text = pypandoc.convert_file("tmp_f.docx", 'plain')
-    # print(text)
-    client_data = pattern_defines.DOCX_CLIENT_DATA
-    
-    def clean_text(value):
-        return value.strip().replace('\n', ' ').strip() if value else ''
+    subprocess.run([
+        'libreoffice',
+        '--headless',
+        '--convert-to', 'pdf',
+        '--outdir', "./",
+        "tmp_f.docx"
+    ], check=True)
 
-    def is_checked(value):
-        return '☒' in value
+    uploaded_file = genai.upload_file("tmp_f.pdf") 
 
-    patterns = pattern_defines.DOCX_PATTERN
+    prompt = """## Objective
+Your task is to extract detailed client financial information from documents and structure it according to the specific JSON template provided below. You must capture all relevant client details while maintaining the required structure.
+Be careful when picking values from checkboxes, a cross marks the selected option. Think twice. Or thrice.
 
-    for key, pattern in patterns.items():
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            if key == 'name':
-                client_data["Client Information"]["Last Name"] = clean_text(match.group(1))
-                client_data["Client Information"]["First Name"] = clean_text(match.group(2))
-            elif key == 'gender':
-                client_data["Client Information"]["Gender"] = "Male" if is_checked(match.group(1)) else "Female"
-            elif key == 'phone':
-                client_data["Contact Info"]["Telephone"] = clean_text(match.group(1))
-            elif key == 'email':
-                client_data["Contact Info"]["Email"] = clean_text(match.group(1))
-            elif key == 'pep':
-                client_data["Personal Info"]["Politically Exposed Person"] = match.group(1) == "Yes"
-            elif key == 'marital_status':
-                client_data["Personal Info"]["Marital Status"] = clean_text(match.group(1))
-            elif key == 'education':
-                client_data["Personal Info"]["Highest Education"] = clean_text(match.group(1))
-            elif key == 'education_history':
-                client_data["Personal Info"]["Education History"] = clean_text(match.group(1))
-            elif key == 'employment':
-                client_data["Professional Background"]["Employment"]["Status"] = "Employee"
-                client_data["Professional Background"]["Employment"]["Since"] = clean_text(match.group(1))
-            elif key == 'employer':
-                client_data["Professional Background"]["Employment"]["Employer"] = clean_text(match.group(1))
-            elif key == 'position':
-                client_data["Professional Background"]["Employment"]["Position"] = clean_text(match.group(1))
-            elif key == 'wealth':
-                client_data["Professional Background"]["Wealth"]["Total Estimated"] = clean_text(match.group(1))
-            elif key == 'wealth_origin':
-                client_data["Professional Background"]["Wealth"]["Inheritance Year"] = clean_text(match.group(1))
-                client_data["Professional Background"]["Wealth"]["Inherited From"] = clean_text(match.group(2))
-            elif key == 'assets':
-                client_data["Professional Background"]["Wealth"]["Real Estate"] = int(match.group(1))
-                client_data["Professional Background"]["Wealth"]["Business"] = int(match.group(2))
-            elif key == 'income':
-                client_data["Professional Background"]["Income"]["Total Estimated"] = clean_text(match.group(1))
-            elif key == 'income_country':
-                client_data["Professional Background"]["Income"]["Country"] = clean_text(match.group(1))
-            elif key == 'commercial':
-                client_data["Account Information"]["General"]["Commercial Account"] = match.group(1) == "Yes"
-            elif key == 'risk_profile':
-                client_data["Account Information"]["General"]["Risk Profile"] = clean_text(match.group(1))
-            elif key == 'mandate':
-                client_data["Account Information"]["General"]["Mandate Type"] = clean_text(match.group(1))
-            elif key == 'experience':
-                client_data["Account Information"]["General"]["Investment Experience"] = clean_text(match.group(1))
-            elif key == 'horizon':
-                client_data["Account Information"]["General"]["Investment Horizon"] = clean_text(match.group(1))
-            elif key == 'markets':
-                client_data["Account Information"]["General"]["Preferred Markets"] = clean_text(match.group(1))
-            elif key == 'total_aum':
-                client_data["Account Information"]["Assets"]["Total AUM"] = int(match.group(1))
-            elif key == 'transfer_aum':
-                client_data["Account Information"]["Assets"]["Transfer AUM"] = int(match.group(1))
-            else:
-                client_data["Client Information"][key.replace('_', ' ').title()] = clean_text(match.group(1))
-    return client_data
+## Required Output Structure
+You must format the extracted data according to this JSON structure:
+```json
+{
+  "Client Information": {
+    "Address": "",
+    "Country": "",
+    "Dob": "",
+    "Nationality": "",
+    "Id Type": "",
+    "Id Issue": "",
+    "Id Expiry": "",
+    "Gender": "",
+    "Account Number": ""
+  },
+  "Contact Info": {},
+  "Personal Info": {
+    "Marital Status": ""
+  },
+  "Professional Background": {
+    "Employment": "",
+    "Employer": "",
+    "Wealth": "",
+    "Real Estate": "",
+    "Business": "",
+    "Income": ""
+  },
+  "Account Information": {
+    "General": {},
+    "Commercial Account": "",
+    "Mandate Type": "",
+    "Investment Experience": "",
+    "Investment Horizon": "",
+    "Preferred Markets": "",
+    "Assets": ""
+  }
+}
+```
 
+## Information Mapping Guide
+For each document, carefully search for and map the following information:
+
+### Client Information Section
+- **Address**: Complete street address, city, postal code (e.g., "ItÃ¤inen Teatterikuja 22, 45098 Sipoo")
+- **Country**: Country of domicile (e.g., "Finland")
+- **Dob**: Date of birth in YYYY-MM-DD format (e.g., "1998-03-23")
+- **Nationality**: Client's nationality (e.g., "Finnish")
+- **Id Type**: Type of identification document (e.g., "passport")
+- **Id Issue**: ID issuance date in YYYY-MM-DD format (e.g., "2018-08-05")
+- **Id Expiry**: ID expiration date in YYYY-MM-DD format (e.g., "2028-08-04")
+- **Gender**: Client's gender (e.g., "Female")
+- **Account Number**: Client's account number if available
+
+### Contact Info Section
+- Include all telephone numbers with country codes (e.g., "+358 044 459 20 38")
+- Include all email addresses (e.g., "katriina.virtanen@elisa.fi")
+- Add any additional communication methods as needed
+
+### Personal Info Section
+- **Marital Status**: Current marital status (Single, Married, Divorced, or Widowed)
+- Add education information (e.g., highest education attained, institutions)
+- Include political exposure status (PEP status)
+- Add any other relevant personal details
+
+### Professional Background Section
+- **Employment**: Current employment status (e.g., "Employee", "Self-Employed")
+- **Employer**: Name of current employer (e.g., "CapMan Oyj")
+- **Wealth**: Total estimated wealth range (e.g., "EUR 1.5m-5m")
+- **Real Estate**: Value of real estate holdings in EUR
+- **Business**: Value of business holdings in EUR (e.g., "10000")
+- **Income**: Annual income range (e.g., "< EUR 250,000")
+
+### Account Information Section
+- **General**: General account details (investment risk profile, etc.)
+- **Commercial Account**: Whether it's a commercial account ("Yes" or "No")
+- **Mandate Type**: Type of investment mandate (e.g., "Advisory", "Discretionary")
+- **Investment Experience**: Level of investment experience (e.g., "Inexperienced", "Experienced", "Expert")
+- **Investment Horizon**: Investment time horizon (e.g., "Short", "Medium", "Long-Term")
+- **Preferred Markets**: Preferred investment markets (e.g., "Finland")
+- **Assets**: Total assets under management in EUR (e.g., "2940000")
+
+## Critical Rules
+1. You **MUST** maintain all original field names exactly as shown in the template
+2. You **MAY** add new fields within each section to include additional information 
+3. You **MUST NOT** remove or modify any of the original field names
+4. Use empty strings or null for missing information
+5. Format all dates consistently as YYYY-MM-DD
+6. Format currency values as numbers without currency symbols
+7. Extract all information even if it appears in different sections of the document
+
+## Analysis Process
+1. Read the entire document thoroughly first
+2. Identify all relevant client information from all sections
+3. Map each piece of information to the appropriate field in the JSON structure
+4. Verify that all required fields are populated when information is available
+5. Ensure additional relevant information is included in appropriate sections
+
+Provide the complete JSON structure with all extracted information properly formatted according to these instructions.
+"""
+    response = model.generate_content(
+        [prompt, uploaded_file],
+        stream=False,
+    )
+
+    text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
+    print(text)
+
+    return json.loads(text)
 
 def cast_files(data, outcome):
     global r
-
-    """
-    Extracts all the data from endpoint request to structured data
-
-    Args:
-        returned data from GET request -> JSON
-        outcome -> String
-    Returns:
-        structured extracted data from all PDF file -> JSON
-        structured extracted data from all TXT file -> JSON
-        structured extracted data from all PNG file -> JSON
-        structured extracted data from all DOCX file -> JSON
-    """
     with open("output.png", "wb") as f:
         f.write(base64.b64decode(data["client_data"]["passport"]))
     with open("output.docx", "wb") as f:

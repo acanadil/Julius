@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import json
 import google.generativeai as genai
-
+from datetime import datetime
 genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
 
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
@@ -17,7 +17,7 @@ def evaluate_application(parsed_data):
     # parsed_data.pop("outcome", None)
 
     prompt = f"""
-You are a financial screening analyst at a bank. Your task is to evaluate whether the passport, profile, description, and account application form are consistent with each other.
+You are a financial screening analyst at a bank. Today is '{datetime.now()}'. Your task is to evaluate whether the passport, profile, description, and account application form are consistent with each other.
 
 The input is a JSON object with the following sections:
 - `passport`: official identity information
