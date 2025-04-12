@@ -56,12 +56,15 @@ class _HomePageState extends State<HomePage> {
         final predictionMatch = newData['prediction'].toLowerCase() ==
             newData['result'].toLowerCase();
 
+        final newRow = PredictionRow(
+          newData['name'],
+          newData['prediction'],
+          newData['result'],
+          widget.gameNumber,
+        );
+
         setState(() {
-          _rows.add(PredictionRow(
-            newData['name'],
-            newData['prediction'],
-            newData['result'],
-          ));
+          _rows.add(newRow);
 
           if (predictionMatch) {
             _score++;
@@ -85,14 +88,9 @@ class _HomePageState extends State<HomePage> {
             _rows.removeAt(0);
           }
 
-          widget.onNewPrediction(PredictionRow(
-            newData['name'],
-            newData['prediction'],
-            newData['result'],
-          ));
+          widget.onNewPrediction(newRow);
         });
 
-        // Scroll automático al final
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
@@ -123,64 +121,51 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Header Row: Game Number and Score
-            _buildHeader(),
+            // Title below AppBar
+            _buildTitle(context),
 
-            // Table displaying predictions
+            // Card containing all content including the table
             Card(
               elevation: 5,
               color: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15)),
+                borderRadius: BorderRadius.circular(15),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Table(
-                  border: TableBorder.all(color: Colors.grey.shade300),
-                  columnWidths: const {
-                    0: FlexColumnWidth(2),
-                    1: FlexColumnWidth(2),
-                    2: FlexColumnWidth(2),
-                  },
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeaderRow(),
-                    for (final row in _rows) _buildDataRow(row),
-                    for (int i = _rows.length; i < widget.maxRows; i++)
-                      _buildEmptyRow(),
+                    _buildHeader(),
+                    const SizedBox(height: 16),
+                    _buildTable(),
+                    if (_isGameOver) _buildGameOverButton(),
                   ],
                 ),
               ),
             ),
-
-            // Game Over Message
-            if (_isGameOver)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isGameOver = false;
-                      _rows.clear();
-                      _score = 0;
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    primary: Colors.red, // Red for Game Over
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                  ),
-                  child: const Text(
-                    'Game Over!',
-                    style: TextStyle(fontSize: 20),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 
-  // Header Row with Game Number and Score
+  // Title under AppBar
+  Widget _buildTitle(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Text(
+        'Predictor',
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).primaryColor,
+        ),
+      ),
+    );
+  }
+
+  // Header for score and game number
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -194,7 +179,57 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Header for the Table
+  // Table content
+  Widget _buildTable() {
+    return Table(
+      border: TableBorder.all(color: Colors.grey.shade300),
+      columnWidths: const {
+        0: FlexColumnWidth(2), // Name
+        1: FlexColumnWidth(2), // Prediction
+        2: FlexColumnWidth(2), // Result
+      },
+      children: [
+        _buildHeaderRow(),
+        // Only add data rows that have information
+        for (final row in _rows)
+          if (row.name.isNotEmpty &&
+              row.prediction.isNotEmpty &&
+              row.result.isNotEmpty)
+            _buildDataRow(row),
+        // Add empty rows only if there are blank spaces needed (do not mark rows as empty if no data)
+        for (int i = _rows.length; i < widget.maxRows; i++) _buildEmptyRow(),
+      ],
+    );
+  }
+
+  // Game over button
+  Widget _buildGameOverButton() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Center(
+        // Centered the "Game Over!" button
+        child: ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _isGameOver = false;
+              _rows.clear();
+              _score = 0;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            primary: Colors.red,
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+          ),
+          child: const Text(
+            'Game Over!',
+            style: TextStyle(fontSize: 20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Table header row
   TableRow _buildHeaderRow() {
     return TableRow(
       decoration: BoxDecoration(
@@ -214,7 +249,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Data row for each prediction
+  // Data row
   TableRow _buildDataRow(PredictionRow row) {
     bool isMatch = row.prediction.toLowerCase() == row.result.toLowerCase();
     return TableRow(
@@ -230,7 +265,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Empty row when maxRows is not reached
+  // Empty row for filling up the table if needed
   TableRow _buildEmptyRow() {
     return TableRow(
       children: List.generate(
@@ -243,7 +278,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Helper to build text cells
+  // Text cell for displaying data
   Widget _buildTextCell(String text) {
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -251,7 +286,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Helper to build status cells with icons
+  // Status cell with icons (check/cross) based on prediction status
   Widget _buildStatusCell(String status) {
     bool isAccepted = status.toLowerCase() == 'accept';
     return Padding(

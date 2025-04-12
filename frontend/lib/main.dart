@@ -1,10 +1,13 @@
 // lib/main.dart
+import 'dart:html';
+
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'predictions_page.dart';
 import 'games_page.dart';
 import 'prediction_row.dart';
 
+// import SportsEsportsIcon from '@material-ui/icons/SportsEsports';
 void main() {
   runApp(MyApp());
 }
@@ -13,7 +16,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Navigation App',
+      // Image.asset(
+      //   'assets/logo.png',
+      //   height: 100,
+      // ),
+      title: 'QuackCoders',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -65,7 +72,7 @@ class _NavigationPageState extends State<NavigationPage> {
         },
       ),
       PredictionsPage(allRows: _allRows),
-      GamesPage(gameHistory: _gameHistory),
+      GamesPage(gameHistory: _gameHistory, allPredictions: _allRows),
     ];
   }
 
@@ -79,9 +86,9 @@ class _NavigationPageState extends State<NavigationPage> {
           title: const Text('QuackCoders'),
           bottom: TabBar(
             tabs: const [
-              Tab(icon: Icon(Icons.home)),
-              Tab(icon: Icon(Icons.analytics)),
-              Tab(icon: Icon(Icons.history)),
+              Tab(icon: Icon(Icons.home), text: 'Home'),
+              Tab(icon: Icon(Icons.history), text: 'History'),
+              Tab(icon: Icon(Icons.sports_esports), text: 'Games'),
             ],
           ),
         ),
