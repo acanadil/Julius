@@ -1,2 +1,4 @@
 .venv/*
 *.pyc
+client_*/*
+client_*.zip

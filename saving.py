@@ -9,7 +9,6 @@ import pypandoc
 import pattern_defines
 import redis
 import json
-from flask import Flask, request
 import time
 
 # Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
@@ -196,7 +195,9 @@ def _data_extract_docx(data):
         return value.strip().replace('\n', ' ').strip() if value else ''
 
     def is_checked(value):
-        return '☒' in value
+        if value:
+            return '☒' in value
+        return False
 
     patterns = pattern_defines.DOCX_PATTERN
 
@@ -207,7 +208,10 @@ def _data_extract_docx(data):
                 client_data["Client Information"]["Last Name"] = clean_text(match.group(1))
                 client_data["Client Information"]["First Name"] = clean_text(match.group(2))
             elif key == 'gender':
-                client_data["Client Information"]["Gender"] = "Male" if is_checked(match.group(1)) else "Female"
+                if match.group(1) is not None and is_checked(match.group(1)):
+                    client_data["Client Information"]["Gender"] = "Female"
+                elif match.group(2) is not None and is_checked(match.group(2)):
+                    client_data["Client Information"]["Gender"] = "Male"
             elif key == 'phone':
                 client_data["Contact Info"]["Telephone"] = clean_text(match.group(1))
             elif key == 'email':
