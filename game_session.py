@@ -32,6 +32,7 @@ class GameSession:
         
         self.session_id = data["session_id"]
         self.client_id = data["client_id"]
+        return data
 
     def make_decision(self, decision="Accept"):
 

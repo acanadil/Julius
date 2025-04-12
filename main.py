@@ -9,9 +9,10 @@ def main():
     
     while True:
         game = GameSession(api_key=API_KEY, player_name=player_name)
-        game.start_game()
+        result = game.start_game()
+
+        last_result = result
         
-        result = None
         while True:
             result = game.make_decision(decision="Accept")
             filtered_result = {k: v for k, v in result.items() if k != "client_data"}
