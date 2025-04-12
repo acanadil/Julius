@@ -17,7 +17,7 @@ import subprocess
 # Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
 
 global r
-# r = redis.Redis(host='localhost', port=6379, db=0)
+#r = redis.Redis(host='localhost', port=6379, db=0)
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
@@ -118,7 +118,49 @@ def _data_extract_png(data):
 
     image = Image.open(BytesIO(base64.b64decode(data))) 
 
-    prompt = "Your objective is to structure into a JSON the information found on this passport, good luck."
+    prompt = """## Task Overview
+You are tasked with extracting structured information from passport images and formatting it into a precise JSON structure. The passport may be from any country, but you must identify all standard passport fields accurately.
+Think twice. Or thrice.
+
+## Required Output Structure
+Your response must strictly follow this JSON structure:
+
+```json
+{
+  "document_type": "",         // Type of document (PASSPORT, etc.)
+  "country": "",               // Full country name and any secondary language versions
+  "code": "",                  // 3-letter country code (e.g., AUT for Austria)
+  "passport_number": "",       // The unique passport identifier
+  "surname": "",               // Last name/family name (typically in uppercase)
+  "given_names": "",           // First and middle names (typically in uppercase)
+  "birth_date": "",            // Format as shown in passport (e.g., "14-Jul-1975")
+  "citizenship": "",           // Citizenship as written in the passport
+  "sex": "",                   // Single character (M/F)
+  "issue_date": "",            // When the passport was issued
+  "expiry_date": "",           // When the passport expires
+  "signature": "",             // As shown in signature field
+  "mrz": ""                    // Machine Readable Zone (the coded text at bottom)
+}
+```
+
+## Information Extraction Guidelines
+1. **Document Type**: Usually stated at the top of the document (e.g., "PASSPORT")
+2. **Country**: Extract both native language and English versions if present
+3. **Personal Information**: Extract exactly as written, preserving capitalization
+4. **Dates**: Maintain the original date format used in the passport
+5. **MRZ**: The machine-readable zone typically contains two or three lines of characters with chevrons (<) as fillers/separators
+6. **Language Variations**: Note that fields may appear in multiple languages - extract as shown
+
+## Important Instructions
+- Carefully examine the entire image before extracting
+- Preserve all formatting and capitalization as shown in the original document
+- Do not omit any fields in the JSON structure
+- Pay special attention to the MRZ which contains encoded verification information
+- If any field is unclear or not visible, indicate with "[UNCLEAR]" rather than guessing
+- Double-check numerical data, especially dates and the passport number
+
+Remember that passport formatting varies by country, but the fundamental information remains consistent. Your task is to identify and properly structure this information regardless of layout variations. GOod luck.
+"""
 
     response = model.generate_content(
         [prompt, image],
@@ -277,11 +319,11 @@ def cast_files(data, outcome):
         "profile": docx_data,
         "account": pdf_data,
         "description": txt_data,
-        # "outcome": outcome,
+        "outcome": outcome,
     }
     t = time.time()
     denei = png_data["passport_num"] if "passport_num" in png_data.keys() else pdf_data["passport_number"] if "passport_number" in pdf_data.keys() else f"PASSPORT_NUMBER_NOT_FOUND-{t}"
     resultao = "right" if outcome == "active" else "wrong"
-    # r.set(f"true_{resultao}-{denei}", json.dumps(global_dict, ensure_ascii=False))
+    #r.set(f"true_{resultao}-{denei}", json.dumps(global_dict, ensure_ascii=False))
     return global_dict
     
