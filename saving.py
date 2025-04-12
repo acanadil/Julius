@@ -7,11 +7,15 @@ import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
 import pypandoc
 import pattern_defines
-import os
 import redis
 import json
+from flask import Flask, request
+import time
+
 # Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
 
+global r
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 def post_request():
     """
@@ -185,7 +189,6 @@ def _data_extract_docx(data):
     with open(f'tmp_f.docx', 'wb') as f:
         f.write(base64.b64decode(data))
     text = pypandoc.convert_file("tmp_f.docx", 'plain')
-    os.remove("tmp_f.docx")
     
     client_data = pattern_defines.DOCX_CLIENT_DATA
     
@@ -254,10 +257,12 @@ def _data_extract_docx(data):
                 client_data["Account Information"]["Assets"]["Transfer AUM"] = int(match.group(1))
             else:
                 client_data["Client Information"][key.replace('_', ' ').title()] = clean_text(match.group(1))
-
     return client_data
 
-def cast_files(data, redis_client, outcome):
+
+def cast_files(data, outcome):
+    global r
+
     """
     Extracts all the data from endpoint request to structured data
 
@@ -281,6 +286,9 @@ def cast_files(data, redis_client, outcome):
         "description": txt_data,
         "outcome": outcome,
     }
-    redis_client.set(png_data["passport_num"], json.dumps(global_dict, ensure_ascii=False))
-    return pdf_data, txt_data, png_data, docx_data
-
+    t = time.time()
+    denei = png_data["passport_num"] if "passport_num" in png_data.keys() else pdf_data["passport_number"] if "passport_number" in pdf_data.keys() else f"PASSPORT_NUMBER_NOT_FOUND-{t}"
+    resultao = "right" if outcome == "active" else "wrong"
+    r.set(f"true_{resultao}-{denei}", json.dumps(global_dict, ensure_ascii=False))
+    return global_dict
+    
