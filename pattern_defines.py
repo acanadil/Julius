@@ -1,5 +1,5 @@
 PNG_PATTERN = {
-    "country": r"(?:[A-Z\s/]+)\s*/\s*(?:[A-Z][a-z\s]+)",
+    "country": r"(?:[A-Z\s/]+)\s*/\s*([A-Z][a-z\s]+)",
     "country_code": r"( [A-Z]{3} )",
     "passport_num": r"([A-Z]{2}\d{7})",
     "name": r"^([A-Z]+ [A-Z]+ [A-Z]+)$",
@@ -19,7 +19,7 @@ DOCX_PATTERN = {
     'id_type': r'ID Type\s+([^\n]+?)\s*ID Issue Date',
     'id_issue': r'ID Issue Date\s+(\d{4}-\d{2}-\d{2})',
     'id_expiry': r'ID Expiry Date\s+(\d{4}-\d{2}-\d{2})',
-    'gender': r'Gender\s+.*?☐ Female\s*(☒?) Male|Gender\s+.*?☒ Female\s*(☐?) Male',
+    'gender': r'Gender\s*[:\s]*(☒|☐)\s*Female\s*(☒|☐)\s*Male',
     'phone': r'Communication Medium\s+Telephone\s+([^\n]+?)\s*E-Mail',
     'email': r'E-Mail\s+([^\n]+?)\s*Account Holder',
     'pep': r'Is the client or associated person a Politically Exposed Person.*?☒?\s*(No|Yes)',

@@ -140,7 +140,7 @@ def _data_extract_png(data):
 
     image = _preprocess_image(Image.open(BytesIO(base64.b64decode(data))))
     
-    text = pytesseract.image_to_string(image)
+    text = pytesseract.image_to_string(image, config=r'--oem 3 --psm 6')
     text = re.sub(r'\n+', '\n', text).strip()
     lines = text.split('\n')
 
@@ -158,14 +158,14 @@ def _data_extract_png(data):
             match = re.search(pattern, line)
             if match:
                 if field == "country":
-                    passport_data[field] = "Republic of Austria"
+                    passport_data[field] = match.group(1)
                 elif field == "country_code":
                     passport_data[field] = match.group(1)
                 elif field == "passport_num":
                     passport_data[field] = match.group(1)
                 elif field == "name":
                     passport_data[field] = match.group(1)
-                elif field == "issue Date":
+                elif field == "birth_date":
                     passport_data[field] = match.group(1)
                 elif field == "sex":
                     passport_data[field] = match.group(1)
@@ -279,6 +279,15 @@ def cast_files(data, outcome):
         structured extracted data from all PNG file -> JSON
         structured extracted data from all DOCX file -> JSON
     """
+    with open("output.png", "wb") as f:
+        f.write(base64.b64decode(data["client_data"]["passport"]))
+    with open("output.docx", "wb") as f:
+        f.write(base64.b64decode(data["client_data"]["profile"]))
+    with open("output.pdf", "wb") as f:
+        f.write(base64.b64decode(data["client_data"]["account"]))
+    with open("output.txt", "wb") as f:
+        f.write(base64.b64decode(data["client_data"]["description"]))
+
     pdf_data = _data_extract_pdf(data["client_data"]["account"])
     txt_data = _data_extract_txt(data["client_data"]["description"])
     png_data = _data_extract_png(data["client_data"]["passport"])
@@ -290,9 +299,10 @@ def cast_files(data, outcome):
         "description": txt_data,
         "outcome": outcome,
     }
+    print(png_data)
     t = time.time()
     denei = png_data["passport_num"] if "passport_num" in png_data.keys() else pdf_data["passport_number"] if "passport_number" in pdf_data.keys() else f"PASSPORT_NUMBER_NOT_FOUND-{t}"
     resultao = "right" if outcome == "active" else "wrong"
-    r.set(f"true_{resultao}-{denei}", json.dumps(global_dict, ensure_ascii=False))
+    #r.set(f"true_{resultao}-{denei}", json.dumps(global_dict, ensure_ascii=False))
     return global_dict
     
