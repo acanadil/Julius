@@ -1,16 +1,21 @@
 import requests
 from game_session import GameSession
+import saving
+import json
 
-def get_validator_decision(url):
-    try:
-        response = requests.get(url)
+def get_validator_decision(url, result_to_post):
+    # try:
+        # print(type(result_to_post))
+        result_to_post = saving.cast_files(result_to_post, None)
+        response = requests.post(url, json=result_to_post)
         response.raise_for_status()
-        decision = response.json().get("decision")
+        response_data = response.json()
+        decision = response_data['decision']
         if decision in ["Accept", "Reject"]:
             return decision
-    except Exception as e:
-        print(f"Error al consultar el validador en {url}: {e}")
-    return "Accept"
+    # except Exception as e:
+    #     print(f"Error al consultar el validador en {url}: {e}")
+    # return "Accept"
 
 def round_robin(validators):
     while True:
@@ -21,9 +26,9 @@ def main():
     API_KEY = "BAh5a5BH_zic0UbuFm8pqlHRcc_ctl1DuYmcDl8-yok"
 
     validators = [
-        "http://validator1:8000/decision",
-        "http://validator2:8000/decision",
-        "http://validator3:8000/decision"
+        "http://localhost:5000/evaluate",
+        # "http://validator2:8000/decision",
+        # "http://validator3:8000/decision"
     ]
     validator_iter = round_robin(validators)
     
@@ -35,11 +40,11 @@ def main():
         print(f"\n=== Iniciando partida #{partida_num} ===")
         
         game = GameSession(api_key=API_KEY, player_name="QuackCoders")
-        game.start_game()
+        result = game.start_game()
         
         while True:
             validator_url = next(validator_iter)
-            decision = get_validator_decision(validator_url)
+            decision = get_validator_decision(validator_url, result)
             print(f"\nDecision del validador ({validator_url}): {decision}")
             
             result = game.make_decision(decision=decision)
@@ -65,5 +70,6 @@ def main():
             print(f"{validator} -> Acertado: {stat['success']} | Fallado: {stat['fail']} | % Acierto: {accuracy:.2f}%")
         
         print("\nReiniciando partida...\n")
+        break
 
 main()

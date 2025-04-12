@@ -15,6 +15,7 @@ def main():
         
         while True:
             result = game.make_decision(decision="Accept")
+            # print(result['client_data']['description'])
             filtered_result = {k: v for k, v in result.items() if k != "client_data"}
             print(filtered_result)
 
