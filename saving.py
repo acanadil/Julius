@@ -8,7 +8,9 @@ from PIL import Image, ImageEnhance, ImageFilter
 import pypandoc
 import pattern_defines
 import os
-# Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary
+import redis
+import json
+# Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
 
 
 def post_request():
@@ -255,12 +257,13 @@ def _data_extract_docx(data):
 
     return client_data
 
-def cast_files(data):
+def cast_files(data, redis_client, outcome):
     """
     Extracts all the data from endpoint request to structured data
 
     Args:
         returned data from GET request -> JSON
+        outcome -> String
     Returns:
         structured extracted data from all PDF file -> JSON
         structured extracted data from all TXT file -> JSON
@@ -271,5 +274,13 @@ def cast_files(data):
     txt_data = _data_extract_txt(data["client_data"]["description"])
     png_data = _data_extract_png(data["client_data"]["passport"])
     docx_data = _data_extract_docx(data["client_data"]["profile"])
+    global_dict = {
+        "passport": png_data,
+        "profile": docx_data,
+        "account": pdf_data,
+        "description": txt_data,
+        "outcome": outcome,
+    }
+    redis_client.set(png_data["passport_num"], json.dumps(global_dict, ensure_ascii=False))
     return pdf_data, txt_data, png_data, docx_data
 

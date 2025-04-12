@@ -8,8 +8,9 @@ code, data = saving.post_request()
 current_time = int(time.time())
 
 # Cast every file to JSON
+r = redis.Redis(host='localhost', port=6379, db=0)
 outputs = []
-outputs.append(saving.cast_files(data))
+outputs.append(saving.cast_files(data, r, "Accepted"))
 
 with open("output.json", "w") as f:
     json.dump(outputs, f, ensure_ascii=False)
