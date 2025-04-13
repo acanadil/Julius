@@ -15,18 +15,18 @@ historial_partidas = []
 historial_partida_actual = []
 
 def get_validator_decision(url, result_to_post):
-    # try:
-    #     # print(type(result_to_post))
-    #     result_to_post = saving.cast_files(result_to_post, None)
-    #     response = requests.post(url, json=result_to_post)
-    #     response.raise_for_status()
-    #     response_data = response.json()
-    #     decision = response_data['decision']
-    #     if decision in ["Accept", "Reject"]:
-    #         return decision
-    # except Exception as e:
-    #     print(f"Error al consultar el validador en {url}: {e}")
-    return "Accept"
+    try:
+        # print(type(result_to_post))
+        result_to_post = saving.cast_files(result_to_post, None)
+        response = requests.post(url, json=result_to_post)
+        response.raise_for_status()
+        response_data = response.json()
+        decision = response_data['decision']
+        if decision in ["Accept", "Reject"]:
+            return decision
+    except Exception as e:
+        print(f"Error al consultar el validador en {url}: {e}")
+        return "Accept"
 
 def round_robin(validators):
     while True:
