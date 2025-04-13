@@ -12,7 +12,7 @@ class ClientInfo {
   final String? sex;
   final String? signature;
   final String? surname;
-  final String? machineReadableZone;
+  // final String? machineReadableZone;
   final String? mrz;
   final String? type;
   final String? passportType;
@@ -33,7 +33,7 @@ class ClientInfo {
     this.sex,
     this.signature,
     this.surname,
-    this.machineReadableZone,
+    // this.machineReadableZone,
     this.mrz,
     this.type,
     this.passportType,
@@ -56,7 +56,7 @@ class ClientInfo {
       sex: json['sex'],
       signature: json['signature'],
       surname: json['surname'],
-      machineReadableZone: json['machine_readable_zone'],
+      // machineReadableZone: json['machine_readable_zone'],
       mrz: json['mrz'],
       type: json['type'],
       passportType: json['passport_type'],

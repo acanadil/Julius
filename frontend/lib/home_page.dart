@@ -53,45 +53,53 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  /// Construye la DataTable a partir de una lista de [HistorialItem]
   Widget _buildDataTable(List<HistorialItem> items) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Nombre')),
-          DataColumn(label: Text('Decision')),
-          DataColumn(label: Text('Status')),
-        ],
-        rows: items.map((item) {
-          final String nombre = item.clientInfo != null
-              ? '${item.clientInfo!.givenNames ?? ""} ${item.clientInfo!.surname ?? ""}'
-              : 'N/A';
-          final bool accepted = item.decision?.toLowerCase() == 'accept';
-          return DataRow(cells: [
-            DataCell(Text(nombre)),
-            DataCell(Row(
-              children: [
-                Icon(
-                  accepted ? Icons.check : Icons.close,
-                  color: accepted ? Colors.green : Colors.red,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-                Text(item.decision ?? '')
+    return Container(
+      width: double.infinity, // Ocupa todo el ancho
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columns: const [
+            DataColumn(label: Text('Client name')),
+            DataColumn(label: Text('Decision')),
+            DataColumn(label: Text('Status')),
+          ],
+          rows: items.map((item) {
+            final String nombre = item.clientInfo != null
+                ? '${item.clientInfo!.givenNames ?? ""} ${item.clientInfo!.surname ?? ""}'
+                : 'N/A';
+            final bool accepted = item.decision?.toLowerCase() == 'accept';
+            return DataRow(
+              cells: [
+                DataCell(Text(nombre)),
+                DataCell(Row(
+                  children: [
+                    Icon(
+                      accepted ? Icons.check : Icons.close,
+                      color: accepted ? Colors.green : Colors.red,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(item.decision ?? '')
+                  ],
+                )),
+                DataCell(Text(item.status ?? '')),
               ],
-            )),
-            DataCell(Text(item.status ?? '')),
-          ]);
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final int score = _historialResponse?.historialPartidaActual.length ?? 0;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial'),
+        title: const Text('Current Game'),
       ),
       body: _isLoading || _historialResponse == null
           ? const Center(child: CircularProgressIndicator())
@@ -100,30 +108,19 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Sección para "historial_partida_actual"
+                  // Encabezado con título y SCORE
                   Text(
-                    'Historial Partida Actual',
+                    'History Current Game',
                     style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Score: $score',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
                   _buildDataTable(_historialResponse!.historialPartidaActual),
-                  const SizedBox(height: 24),
-                  // Sección para "historial_partidas"
-                  Text(
-                    'Historial Partidas',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  // Puede haber varias partidas, se iteran
-                  ..._historialResponse!.historialPartidas.map((partida) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDataTable(partida),
-                        const Divider(height: 32),
-                      ],
-                    );
-                  }).toList(),
                 ],
               ),
             ),
