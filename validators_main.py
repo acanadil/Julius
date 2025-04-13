@@ -485,4 +485,4 @@ if __name__ == '__main__':
     hilo_juego.start()
     
     # Iniciar el servidor Flask, escuchando en todas las interfaces de red.
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=6969)
