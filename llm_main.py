@@ -5,7 +5,7 @@ import google.generativeai as genai
 # Conexión a Redis
 r = redis.Redis(host='172.16.206.75', port=6379, decode_responses=True)
 
-genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
+genai.configure(api_key="AIzaSyDwNrAUGPeQDQXBeyf9NVbxEifEGw6mtyE")
 
 model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 

@@ -190,7 +190,7 @@ def _data_extract_png(data):
 
 
 
-    genai.configure(api_key="AIzaSyC4hlob4t5aNGJEaoNnEnaLuABJFU74EPU")
+    genai.configure(api_key="AIzaSyDwNrAUGPeQDQXBeyf9NVbxEifEGw6mtyE")
 
     model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-01-21')
 
@@ -205,7 +205,7 @@ def _data_extract_png(data):
 
     text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
 
-    print(text)
+    # print(text)
 
     return json.loads(text)
 
