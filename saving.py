@@ -13,6 +13,9 @@ from flask import Flask, request
 import time
 import google.generativeai as genai
 import subprocess
+import zipfile
+from lxml import etree
+
 
 # Dependencies: requests PyPDF2 PIL pytesseract pillow pypandoc_binary redis
 
@@ -173,6 +176,64 @@ Remember that passport formatting varies by country, but the fundamental informa
 
     return json.loads(text)
 
+def read_symbol_checkboxes(docx_path):
+    # Open the DOCX file as a ZIP archive
+    with zipfile.ZipFile(docx_path) as docx_zip:
+        with docx_zip.open('word/document.xml') as document_xml:
+            xml_content = document_xml.read()
+
+    # Parse the XML content
+    tree = etree.fromstring(xml_content)
+    namespaces = {
+        'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+    }
+
+    checkboxes = []
+
+    # Find all paragraphs (<w:p>) and iterate with an index
+    paragraphs = tree.xpath('//w:p', namespaces=namespaces)
+    for paragraph_index, paragraph in enumerate(paragraphs):
+        # Get all runs (<w:r>) within the paragraph
+        runs = paragraph.xpath('.//w:r', namespaces=namespaces)
+        paragraph_text = ''.join(
+            node.text or '' for run in runs
+            for node in run.xpath('.//w:t', namespaces=namespaces)
+            if node.text
+        ).strip()
+
+        # Look for checkboxes in text nodes within runs
+        for run_index, run in enumerate(runs):
+            text_nodes = run.xpath('.//w:t', namespaces=namespaces)
+            for text_node in text_nodes:
+                text = text_node.text
+                if text and ('☐' in text or '☒' in text):
+                    # Find the closest preceding or following text for context
+                    preceding_text = ''
+                    following_text = ''
+                    
+                    # Get sibling runs for context
+                    if run_index > 0:
+                        preceding_run = runs[run_index - 1]
+                        preceding_text = ''.join(
+                            node.text or '' for node in preceding_run.xpath('.//w:t', namespaces=namespaces)
+                        ).strip()
+                    if run_index < len(runs) - 1:
+                        following_run = runs[run_index + 1]
+                        following_text = ''.join(
+                            node.text or '' for node in following_run.xpath('.//w:t', namespaces=namespaces)
+                        ).strip()
+
+                    checkboxes.append({
+                        'checkbox_text': text.strip(),
+                        'checked': '☒' in text,
+                        'paragraph_text': paragraph_text,
+                        'paragraph_index': paragraph_index,
+                        'preceding_text': preceding_text,
+                        'following_text': following_text,
+                        'run_index': run_index
+                    })
+    return checkboxes
+
 def _data_extract_docx(data):
     with open(f'tmp_f.docx', 'wb') as f:
         f.write(base64.b64decode(data))
@@ -185,6 +246,8 @@ def _data_extract_docx(data):
     ], check=True)
 
     uploaded_file = genai.upload_file("tmp_f.pdf") 
+    
+    checkboxes = read_symbol_checkboxes('tmp_f.docx')
 
     prompt = """## Objective
 Your task is to extract detailed client financial information from documents and structure it according to the specific JSON template provided below. You must capture all relevant client details while maintaining the required structure.
@@ -286,6 +349,7 @@ For each document, carefully search for and map the following information:
 3. Map each piece of information to the appropriate field in the JSON structure
 4. Verify that all required fields are populated when information is available
 5. Ensure additional relevant information is included in appropriate sections
+6. Compare the information against the validity data to check its integrity
 
 Provide the complete JSON structure with all extracted information properly formatted according to these instructions.
 """
@@ -297,7 +361,30 @@ Provide the complete JSON structure with all extracted information properly form
     text = response.text.strip().removeprefix("```json").removesuffix("```").strip()
     print(text)
 
-    return json.loads(text)
+    jason = json.loads(text)
+
+    ptr = [("Professional Background", "Wealth"), ("Professional Background", "Income")]
+ 
+    dictionary = {
+        "< EUR 1.5m": ptr[0],
+        "EUR 1.5m-5m": ptr[0],
+        "EUR 5m-10m": ptr[0],
+        "EUR 10m-20m": ptr[0],
+        "EUR 20m-50m": ptr[0],
+        "> EUR 50m": ptr[0],
+        "< EUR 250,000": ptr[1],
+        "EUR 250,000 - 500,000": ptr[1],
+        "EUR 500,000 – 1m": ptr[1],
+        "> EUR 1m, please state": ptr[1]
+    }
+
+    for cb in checkboxes:
+        cb_text = cb['checkbox_text'].replace('☒', '').replace('☐', '').strip()        
+        if cb_text in dictionary and cb['checked']:
+            tmp_ptr = dictionary[cb_text]
+            jason[tmp_ptr[0]][tmp_ptr[1]] = cb_text
+
+    return jason
 
 def cast_files(data, outcome):
     global r

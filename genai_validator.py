@@ -26,28 +26,40 @@ The input is a JSON object with the following sections:
 - `description`: a narrative background provided by the relationship manager
 
 ### Your Objective:
-Compare the *description* with the structured data and determine whether the information is consistent and plausible. Focus on:
+Carefully analyze ALL information across all documents before making any conclusions. Compare the *description* with the structured data to determine whether the information is consistent and plausible.
+Have ZERO tolerance for name typos. Also, check syntax of known standards, such as phone number, email, etc.
+
+Focus on:
 1. Name consistency
 2. Date of birth accuracy
 3. Gender mismatch
 4. Employment history vs. claimed experience
 5. Wealth claims vs. actual financials
+   - IMPORTANT: Look for explanations in the description that might clarify apparent financial inconsistencies (inheritances, family wealth, business sales, etc.)
 6. Inheritance data
 7. Residence and nationality consistency
 8. General plausibility of timeline (e.g. age vs. employment years)
+9. Other properties
+
+### Analysis Requirements:
+- Read the ENTIRE description before making judgments
+- When identifying inconsistencies, CITE specific text from the relevant sections
+- Avoid assumptions based on stereotypes or expectations
+- Look for explanations of apparent inconsistencies in the narrative
+- Remember that the profile contains self-reported information that may need verification against the description
 
 ### Output format:
-Respond ONLY with a JSON object in this format:
+Respond with a JSON object in this format (make always sure to verify that it follows this specific structure):
 
-```json
+```
 {{
   "decision": "Accept" or "Reject",
-  "reason": "Concise explanation of your decision"
+  "reason": "Brief explanation of your decision, citing specific evidence."
 }}
 ```
 
 Here is the input data:
-```json
+```
 {json.dumps(parsed_data, indent=2)}
 ```
 """
