@@ -23,7 +23,7 @@ class GamesPage extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(
               child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                   maxCrossAxisExtent: 200.0,
                   crossAxisSpacing: 8.0,
                   mainAxisSpacing: 8.0,

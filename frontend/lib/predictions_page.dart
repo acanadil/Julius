@@ -88,7 +88,7 @@ class PredictionsPage extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Text(
             text,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -122,7 +122,7 @@ class PredictionsPage extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Text(
         text,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: Colors.black87,
